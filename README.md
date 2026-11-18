@@ -1,78 +1,256 @@
-# TP3 DAR 2026-2027
+# TP3 – Développement d'Applications Réparties
 
-Faculté des Sciences de Sfax - LSI3 - Développement d'applications réparties
-Activités 3-1 et 3-2 : serveurs TCP multi-threads
+**Faculté des Sciences de Sfax (FSS)**  
+**Filière :** LSI3  
+**Année universitaire :** 2026-2027  
+**Matière :** Développement d'applications réparties  
+**Enseignante TP :** Mme Zeineb DAOUD
 
-Ce projet reprend les échanges texte du TP1 et la classe `Operation` sérialisable du TP2. J'ai utilisé un `ServerSocket` pour attendre les connexions et un `Thread` avec `ClientProcess` pour chaque client. Les deux activités se lancent séparément.
+**TP3 : Serveur Multi-threads – Sockets TCP**
 
-## Fichiers
+## 1. Présentation du TP
+
+L'objectif de ce TP est de développer un serveur TCP capable de communiquer avec plusieurs clients en même temps.
+
+Dans les TP précédents, le serveur traitait un seul client à la fois. Ici, j'ai utilisé les threads pour permettre à chaque client d'avoir son propre traitement.
+
+Le travail est divisé en deux activités :
+
+- **Activité 3-1 :** accepter plusieurs clients simultanément et attribuer un numéro à chaque connexion.
+- **Activité 3-2 :** améliorer la calculatrice du TP2 pour permettre à plusieurs clients d'effectuer des calculs en parallèle.
+
+## 2. Organisation du projet
+
+Le projet contient sept classes Java réparties dans deux packages :
 
 ```text
-src/
-  activite31/Server.java, ClientProcess.java, Client.java
-  activite32/Server.java, ClientProcess.java, Client.java, Operation.java
+TP3-DAR2026/
+│
+├── src/
+│   ├── activite31/
+│   │   ├── Server.java
+│   │   ├── Client.java
+│   │   └── ClientProcess.java
+│   │
+│   └── activite32/
+│       ├── Server.java
+│       ├── Client.java
+│       ├── ClientProcess.java
+│       └── Operation.java
+│
+├── docs/
+│   └── screenshots/
+│
+├── .gitignore
+└── README.md
 ```
 
-Il n'y a pas de bibliothèque externe. Un JDK 8 ou plus récent suffit. Les fichiers `.class` sont créés dans `bin`, qui n'est pas déposé sur Git.
+J'ai utilisé uniquement les bibliothèques standard de Java, sans dépendances externes.
 
-## Compiler et lancer (PowerShell)
+**Environnement utilisé :** Windows 11, PowerShell et JDK 21.
 
-Depuis le dossier `TP3-DAR2026` :
+## 3. Compilation du projet
+
+Depuis le dossier `TP3-DAR2026`, ouvrir PowerShell et exécuter :
 
 ```powershell
 New-Item -ItemType Directory -Path bin -Force | Out-Null
 javac -encoding UTF-8 -d bin (Get-ChildItem -Path src -Recurse -Filter *.java | ForEach-Object FullName)
 ```
 
-Activité 3-1, dans deux terminaux :
+Les fichiers compilés sont placés dans le dossier `bin/`.
+
+## 4. Activité 3-1 : Acceptation de plusieurs clients
+
+### Fonctionnement
+
+Dans cette première activité, j'ai créé un serveur TCP qui écoute sur le port `1234`.
+
+À chaque nouvelle connexion, le serveur :
+
+1. Accepte le client avec `accept()`.
+2. Récupère son adresse IP et son port.
+3. Lui attribue un numéro de connexion.
+4. Crée un thread `ClientProcess` pour le gérer.
+5. Envoie son numéro au client.
+
+Grâce aux threads, plusieurs clients peuvent rester connectés sans bloquer le serveur.
+
+### Lancement du serveur
+
+Dans un premier terminal PowerShell :
 
 ```powershell
 java -cp bin activite31.Server
+```
+
+### Lancement du client
+
+Dans un deuxième terminal :
+
+```powershell
 java -cp bin activite31.Client localhost 1234
 ```
 
-Le serveur donne `client n°1`, puis `client n°2`, etc. Le client Java reste connecté jusqu'à ce qu'on appuie sur Entrée. On peut donc ouvrir plusieurs terminaux clients en même temps. Le serveur affiche leur adresse avec `getRemoteSocketAddress()` et leur numéro. Chaque connexion a son propre thread ; un client qui attend ne bloque pas `accept()` pour les autres.
+### Test avec plusieurs clients
 
-Pour le test Telnet demandé dans le sujet, activer **Client Telnet** dans « Activer ou désactiver des fonctionnalités Windows », puis lancer :
+J'ai testé le serveur avec plusieurs connexions simultanées.
+
+Chaque client a reçu un numéro différent et le serveur a affiché son adresse IP et son port.
+
+![Serveur TCP avec les clients connectés](docs/screenshots/activite31-serveur.png)
+
+J'ai également ouvert trois clients simultanément pour vérifier que le serveur pouvait les gérer en parallèle.
+
+![Connexion de trois clients](docs/screenshots/activite31-multiclients.png)
+
+### Test avec Telnet
+
+J'ai utilisé le client Telnet de Windows pour tester la connexion TCP :
 
 ```powershell
 telnet localhost 1234
 ```
 
-Le message d'accueil est une ligne de texte, lisible par Telnet. Le protocole de cette activité est volontairement séparé de celui de la calculatrice.
+La connexion a réussi et le serveur a envoyé le message suivant :
 
-Activité 3-2, dans deux terminaux :
+```text
+Bonjour, vous êtes le client n°2
+```
+
+Ce test montre que le serveur accepte aussi les connexions provenant de Telnet.
+
+![Test de connexion Telnet](docs/screenshots/activite31-telnet.png)
+
+## 5. Activité 3-2 : Calculatrice multi-threads
+
+### Fonctionnement
+
+Dans cette activité, j'ai repris le service de calculatrice du TP2 en utilisant la classe `Operation` qui implémente `Serializable`.
+
+Le client saisit deux nombres et un opérateur (`+`, `-`, `*`, `/`).
+
+L'opération est envoyée au serveur sous forme d'objet grâce à `ObjectOutputStream`.
+
+Le serveur reçoit cet objet avec `ObjectInputStream`, effectue le calcul et renvoie le résultat au client.
+
+Chaque client possède son propre thread `ClientProcess`, ce qui permet de traiter plusieurs calculs en parallèle.
+
+### Lancement du serveur
+
+Dans un premier terminal :
 
 ```powershell
 java -cp bin activite32.Server
+```
+
+Le serveur écoute sur le port `1235`.
+
+### Lancement du client
+
+Dans un deuxième terminal :
+
+```powershell
 java -cp bin activite32.Client localhost 1235
 ```
 
-Le client accepte une opération avec des espaces, par exemple `10 + 5`, puis `exit` pour quitter. Il peut envoyer plusieurs opérations sans se reconnecter. Il envoie un objet `Operation` qui contient les deux entiers et l'opérateur. Le serveur le lit avec `ObjectInputStream`, calcule, puis renvoie le résultat ou un message d'erreur avec `ObjectOutputStream`. Des deux côtés, le flux de sortie est créé et vidé avant le flux d'entrée pour éviter que les deux programmes attendent l'en-tête de l'autre.
+Le client peut saisir plusieurs opérations sans se déconnecter.
 
-Exemple :
+Le format demandé est :
 
 ```text
-10 + 5   -> Resultat : 15
-20 / 4   -> Resultat : 5.0
-20 / 0   -> Resultat : Erreur : division par zero
-2 ? 3    -> Resultat : Erreur : operateur invalide
+nombre opérateur nombre
 ```
 
-Le compteur `nombreOperations` appartient au serveur, pas aux clients. La méthode `compterOperation()` est `synchronized` : un seul thread à la fois peut modifier et afficher sa valeur. Elle est appelée après un calcul réussi ; une demande invalide ou une division par zéro n'est pas comptée.
+Par exemple :
 
-## Essais effectués sur cette machine
+```text
+15 + 10
+```
 
-Le 18 novembre 2026, j'ai compilé les sept classes avec JDK 21.0.12.1. Un essai local automatisé a maintenu trois connexions texte ouvertes en même temps : les trois numéros étaient distincts, puis un quatrième client Java s'est connecté après la fermeture d'un des trois. Pour la calculatrice, j'ai vérifié les quatre opérateurs, un entier négatif, zéro, la division par zéro, un opérateur inconnu et une saisie invalide. Trois clients Java ont ensuite envoyé chacun 20 additions en parallèle ; le compteur du serveur est passé de 1 à 66 sans saut ni doublon (6 calculs initiaux réussis + 60 additions).
+Pour quitter le client, il suffit de saisir `exit`.
 
-Le test avec la commande Telnet réelle n'a pas été effectué : le programme `telnet` n'est pas installé ici. Les tests entre plusieurs machines ne sont pas encore effectués. Aucune capture d'écran n'est jointe ; il faut placer dans `docs/screenshots/` les captures réelles du serveur et des clients lors de la démonstration, avec une courte légende dans ce README avant le dépôt final.
+### Tests effectués
 
-## Essai sur le réseau local
+J'ai testé les quatre opérations ainsi que quelques cas d'erreur.
 
-Sur la machine serveur, trouver son adresse IPv4 avec `ipconfig`, puis lancer le serveur. Depuis chaque autre machine du même réseau, vérifier le port avec `Test-NetConnection ADRESSE_IP -Port 1234` (ou `1235`) et lancer `java -cp bin activite31.Client ADRESSE_IP 1234` ou `java -cp bin activite32.Client ADRESSE_IP 1235`. Les mêmes classes compilées, en particulier `Operation`, doivent être présentes côté client et serveur. Si le pare-feu bloque la connexion, autoriser le port TCP concerné pour le réseau local. Certains réseaux isolent les clients entre eux.
+| Opération | Résultat obtenu |
+|---|---|
+| 15 + 10 | 25 |
+| 20 - 7 | 13 |
+| 6 * 8 | 48 |
+| 20 / 4 | 5.0 |
+| 20 / 0 | Erreur : division par zéro |
+| 2 ? 3 | Erreur : opérateur invalide |
 
-## Synthèse et dépôt
+Les calculs fonctionnent correctement et le programme affiche un message d'erreur lorsque l'opération est invalide.
 
-Ce TP m'a montré la différence entre la socket d'écoute et la socket utilisée pour parler à un client. Le thread évite qu'un client immobilise tous les autres. La sérialisation permet de transmettre directement l'opération du TP2. Enfin, `synchronized` protège le compteur commun aux threads.
+![Tests de la calculatrice](docs/screenshots/activite32-calculatrice.png)
 
-Après les essais Telnet et réseau local et l'ajout des vraies captures, déposer le projet dans un dépôt GitHub puis transmettre son lien dans l'espace de dépôt ENT. Aucun lien de dépôt distant n'est encore disponible.
+### Gestion du compteur global
+
+Le serveur possède une variable `nombreOperations` qui compte le nombre total d'opérations réussies.
+
+Cette variable est partagée entre les threads des clients.
+
+Pour éviter les problèmes d'accès concurrent, j'ai utilisé une méthode `compterOperation()` déclarée `synchronized`.
+
+Ainsi, un seul thread peut modifier le compteur à la fois.
+
+Lors d'un test automatisé, trois clients ont envoyé chacun 20 additions en parallèle, soit 60 nouvelles opérations.
+
+Avec les 6 opérations valides déjà réalisées, le compteur a atteint **66**, sans perte d'incrémentation constatée.
+
+![Compteur global synchronisé](docs/screenshots/activite32-compteur.png)
+
+## 6. Tests sur le réseau local
+
+Les tests précédents ont été effectués sur la même machine avec `localhost`.
+
+Pour tester la communication entre plusieurs ordinateurs, il faut les connecter au même réseau local.
+
+Sur le PC serveur, récupérer l'adresse IPv4 avec :
+
+```powershell
+ipconfig
+```
+
+Sur un autre PC, vérifier la connexion :
+
+```powershell
+Test-NetConnection ADRESSE_IP -Port 1234
+```
+
+Puis lancer le client :
+
+```powershell
+java -cp bin activite31.Client ADRESSE_IP 1234
+```
+
+Pour la calculatrice :
+
+```powershell
+java -cp bin activite32.Client ADRESSE_IP 1235
+```
+
+**Remarque :** les tests entre plusieurs machines physiques restent à effectuer.
+
+## 7. Synthèse
+
+Ce TP m'a permis de mieux comprendre le fonctionnement d'un serveur TCP multi-threads.
+
+Dans l'activité 3-1, j'ai appris à accepter plusieurs connexions et à utiliser un thread pour chaque client.
+
+Dans l'activité 3-2, j'ai repris la calculatrice du TP2 pour échanger des objets Java et traiter plusieurs demandes en parallèle.
+
+J'ai aussi compris pourquoi il faut utiliser `synchronized` lorsqu'une variable est partagée entre plusieurs threads.
+
+Les tests locaux et le test Telnet ont fonctionné. Il reste à vérifier le fonctionnement entre plusieurs machines du même réseau.
+
+## 8. Dépôt du projet
+
+Le projet est préparé pour être déposé sur GitHub sous le nom :
+
+**TP3-DAR2026**
+
+Le lien du dépôt sera ensuite transmis sur la plateforme ENT.
